@@ -1,0 +1,15 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+featureGates:
+  ServiceAccountIssuerDiscovery: true
+networking:
+  apiServerPort: 6443
+kubeadmConfigPatches:
+- |
+  apiVersion: kubeadm.k8s.io/v1beta2
+  kind: ClusterConfiguration
+  apiServer:
+    extraArgs:
+      service-account-issuer: https://localhost:6443
+      service-account-signing-key-file: /etc/kubernetes/pki/sa.key
+      service-account-key-file: /etc/kubernetes/pki/sa.pub
