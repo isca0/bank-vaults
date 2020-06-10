@@ -13,3 +13,12 @@ kubeadmConfigPatches:
       service-account-issuer: https://localhost:6443
       service-account-signing-key-file: /etc/kubernetes/pki/sa.key
       service-account-key-file: /etc/kubernetes/pki/sa.pub
+
+# kubectl create clusterrolebinding oidc-reviewer --clusterrole=system:service-account-issuer-discovery --group=system:unauthenticated
+
+# kind get kubeconfig | yq r - 'clusters[0].cluster.certificate-authority-data' | base64 -d > oidc_discovery_ca_pem
+
+# vault server -dev
+# vault auth enable jwt
+# vault write auth/jwt/config oidc_discovery_url=https://localhost:6443 oidc_discovery_ca_pem=@oidc_discovery_ca_pem
+
