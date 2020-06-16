@@ -11,14 +11,33 @@ kubeadmConfigPatches:
   apiServer:
     extraArgs:
       service-account-issuer: https://localhost:6443
+      service-account-jwks-uri: https://localhost:6443/openid/v1/jwks
       service-account-signing-key-file: /etc/kubernetes/pki/sa.key
       service-account-key-file: /etc/kubernetes/pki/sa.pub
 
-# kubectl create clusterrolebinding oidc-reviewer --clusterrole=system:service-account-issuer-discovery --group=system:unauthenticated
+---
 
-# kind get kubeconfig | yq r - 'clusters[0].cluster.certificate-authority-data' | base64 -d > oidc_discovery_ca_pem
+kubectl create clusterrolebinding oidc-reviewer --clusterrole=system:service-account-issuer-discovery --group=system:unauthenticated
 
-# vault server -dev
-# vault auth enable jwt
-# vault write auth/jwt/config oidc_discovery_url=https://localhost:6443 oidc_discovery_ca_pem=@oidc_discovery_ca_pem
+OIDC_DISCOVERY_CA_PEM=$(kind get kubeconfig | yq r - 'clusters[0].cluster.certificate-authority-data' | base64 -d)
 
+vault server -dev
+vault auth enable jwt
+vault write auth/jwt/config \
+        oidc_discovery_url=https://localhost:6443 \
+        oidc_discovery_ca_pem="$OIDC_DISCOVERY_CA_PEM"
+
+vault write auth/jwt/role/demo \
+        role_type=jwt \
+        bound_audiences=vault \
+        bound_issuer=https://localhost:6443 \
+        bound_subject="system:serviceaccount:default:default" \
+        user_claim=sub \
+        policies="default"
+
+kubectl apply -f pod.yml
+
+JWT=$(kubectl exec -it nginx -- cat /var/run/secrets/tokens/vault-token)
+
+curl http://127.0.0.1:8200/v1/auth/jwt/login \
+    --data "{\"jwt\": \"$JWT\", \"role\": \"demo\"}" | jq
